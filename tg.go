@@ -7,25 +7,25 @@ import (
 	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
 
-// Channelname os an unique identifier for the target chat or username
-// of the target channel (in the format @channelusername)
-
-// WebHookURL is a special URL which determines a address where telegram-bot is available.
-type Params struct {
+type Caller struct {
+	// Channelname is an unique identifier for the target chat or username
+	// of the target channel (in the format @channelusername)
 	ChannelName string
-	WebHookURL  string
+	// WebHookURL is a special URL which determines an address where telegram-bot is available.
+	WebHookURL string
+	Options    ReqOptions
+	ErrChan    chan error
 }
 
-func (params *Params) CallBot(bot *tgbotapi.BotAPI, in <-chan string) error {
-	channelName := params.ChannelName
-	webHookURL := params.WebHookURL
+func (caller *Caller) CallBot(bot *tgbotapi.BotAPI, in <-chan string) error {
+	channelName := caller.ChannelName
+	webHookURL := caller.WebHookURL
 
 	// bot.Debug = true
 	fmt.Printf("Authorized on account %s\n", bot.Self.UserName)
 
-	_, err := bot.SetWebhook(tgbotapi.NewWebhook(webHookURL))
-	if err != nil {
-		return err
+	if _, err := bot.SetWebhook(tgbotapi.NewWebhook(webHookURL)); err != nil {
+		caller.ErrChan <- err
 	}
 
 	updates := bot.ListenForWebhook("/")
@@ -38,12 +38,12 @@ func (params *Params) CallBot(bot *tgbotapi.BotAPI, in <-chan string) error {
 			}
 		case update := <-updates:
 			log.Println(update.Message.Text)
-			_, err = bot.Send(tgbotapi.NewMessage(
+			_, err := bot.Send(tgbotapi.NewMessage(
 				update.Message.Chat.ID,
 				fmt.Sprintf("Bot is handler for %v channel", channelName),
 			))
 			if err != nil {
-				log.Println(err)
+				log.Printf("Channel Name: %v, Error: %v", channelName, err)
 			}
 		}
 	}

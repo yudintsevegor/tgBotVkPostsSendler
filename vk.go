@@ -4,11 +4,12 @@ import (
 	"errors"
 	"log"
 	"net/url"
+	"strconv"
 	"time"
 )
 
 // restrictions:
-// wall.get — 5000 вызовов в сутки. -> ~1 req per 20seconds
+// wall.get — 5000 requests per day. -> ~1 req per 20seconds
 // https://vk.com/dev/data_limits
 
 const (
@@ -17,34 +18,40 @@ const (
 	reqUrl  = "https://api.vk.com/method/wall.get?"
 )
 
-// Count is a number of records you want to retrieve. Maximum value: 100
-
-// Offset is a required to select a specific subset of records.
-
-// Filter determines what types of wall entries you want to retrieve. Possible value:
-// suggestions-suggested posts on the community wall (only available when called with access_token);
-// postponed-deferred records (available only when called with access_token pass);
-// owner — the record owner of the wall;
-// others-entries are not from the wall owner;
-// all-all entries on the wall (owner + others).
-// Default: all.
-
+// from VK API: https://vk.com/dev/wall.get
 type ReqOptions struct {
-	Count    string
-	Offset   string
-	Filter   string
-	AllPosts bool
+	// Count is a number of records you want to retrieve. Maximum value: 100
+	Count string
+	// Offset is a required to select a specific subset of records.
+	Offset string
+	// Filter determines what types of wall entries you want to retrieve. Possible value:
+	// suggestions-suggested posts on the community wall (only available when called with access_token);
+	// postponed-deferred records (available only when called with access_token pass);
+	// owner — the record owner of the wall;
+	// others-entries are not from the wall owner;
+	// all-all entries on the wall (owner + others).
+	// Default: all.
+	Filter string
 }
 
-func (options *ReqOptions) GetVkPosts(groupID, serviceKey string) <-chan string {
-	count := options.Count
-	offset := options.Offset
-	filter := options.Filter
+var mapFilter = map[string]struct{}{
+	"suggestions": struct{}{},
+	"postponed":   struct{}{},
+	"owner":       struct{}{},
+	"others":      struct{}{},
+	"all":         struct{}{},
+}
+
+func (caller *Caller) GetVkPosts(groupID, serviceKey string) <-chan string {
+	count, _, err := caller.Options.validateOptions()
+	if err != nil {
+		caller.ErrChan <- err
+	}
 
 	u := url.Values{}
-	u.Set("count", count)
-	u.Set("offset", offset)
-	u.Set("filter", filter)
+	u.Set("count", caller.Options.Count)
+	u.Set("offset", caller.Options.Offset)
+	u.Set("filter", caller.Options.Filter)
 
 	u.Set("owner_id", groupID)
 	u.Set("access_token", serviceKey)
@@ -52,41 +59,74 @@ func (options *ReqOptions) GetVkPosts(groupID, serviceKey string) <-chan string 
 	u.Set("v", version)
 	u.Set("extended", "1") // is it really important?
 
-	path := reqUrl + u.Encode()
-
 	out := make(chan string)
-	go func() {
-		var isFirstReq = true
-		var corner int
-		var zeroLevel int
-
-		for {
-			body, err := getPosts(path)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
-			// only one groupID in request before
-			if len(body.Groups) != 1 {
-				log.Println(errors.New("empty info about group"))
-				continue
-			}
-
-			corner = body.Count - zeroLevel
-			if isFirstReq {
-				isFirstReq = false
-				zeroLevel = body.Count
-				corner = len(body.Items)
-			}
-
-			// send posts from the latest to the earliest
-			for i := corner - 1; i >= 0; i-- {
-				out <- makeMessage(body.Items[i], groupID)
-			}
-			time.Sleep(20 * time.Second)
-		}
-	}()
+	go loop(count, groupID, u, out)
 
 	return out
+}
+
+func (opt *ReqOptions) validateOptions() (int, int, error) {
+	count, err := strconv.Atoi(opt.Count)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	offset, err := strconv.Atoi(opt.Offset)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if _, ok := mapFilter[opt.Filter]; !ok {
+		return 0, 0, errors.New("unexpected filter in the request")
+	}
+
+	return count, offset, nil
+}
+
+func loop(count int, groupID string, u url.Values, out chan string) {
+	var isFirstReq = true
+	var corner int
+	var zeroLevel int // determines how many posts are necessary to send into telegram channel
+	path := reqUrl + u.Encode()
+
+	for {
+		if !isFirstReq {
+			time.Sleep(20 * time.Second)
+		}
+
+		body, err := getPosts(path)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		// only one groupID in request before
+		if len(body.Groups) != 1 {
+			log.Println(errors.New("empty info about group"))
+			continue
+		}
+
+		corner = body.Count - zeroLevel
+		switch {
+		case corner == 0:
+			continue
+		case corner > count:
+			u.Set("count", strconv.Itoa(count))
+			path = reqUrl + u.Encode()
+			continue
+		}
+
+		if !isFirstReq {
+			zeroLevel += len(body.Items)
+		} else {
+			isFirstReq = false
+			zeroLevel = body.Count
+			corner = len(body.Items)
+		}
+
+		// send posts from the latest to the earliest
+		for i := corner - 1; i >= 0; i-- {
+			out <- makeMessage(body.Items[i], groupID)
+		}
+	}
 }
