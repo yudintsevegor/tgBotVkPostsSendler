@@ -35,24 +35,20 @@ func (params *Params) CallBot(bot *tgbotapi.BotAPI, in <-chan string) error {
 	go http.ListenAndServe(":"+port, nil)
 	fmt.Printf("start listen :%v", port)
 
-	go func() {
-		for {
-			select {
-			case text := <-in:
-				if _, err := bot.Send(tgbotapi.NewMessageToChannel(channelName, text)); err != nil {
-					log.Println(err)
-				}
-			case update := <-updates:
-				_, err = bot.Send(tgbotapi.NewMessage(
-					update.Message.Chat.ID,
-					fmt.Sprintf("Bot is handler for %v channel", channelName),
-				))
-				if err != nil {
-					log.Println(err)
-				}
+	for {
+		select {
+		case text := <-in:
+			if _, err := bot.Send(tgbotapi.NewMessageToChannel(channelName, text)); err != nil {
+				log.Println(err)
+			}
+		case update := <-updates:
+			_, err = bot.Send(tgbotapi.NewMessage(
+				update.Message.Chat.ID,
+				fmt.Sprintf("Bot is handler for %v channel", channelName),
+			))
+			if err != nil {
+				log.Println(err)
 			}
 		}
-	}()
-
-	return nil
+	}
 }
