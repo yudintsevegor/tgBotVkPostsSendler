@@ -9,8 +9,8 @@ Easy util for getting posts from vk communities by them ID and send the posts to
 package main
 
 import (
-	sendler "github.com/yudintsevegor/dotfiles/go_projects/src/tgBotVkPostsSendler"
-    ...
+	sendler "github.com/yudintsevegor/tgBotVkPostsSendler"
+	// other
 )
 
 func main() {
@@ -49,7 +49,6 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
 ```
 
 ## Packages
