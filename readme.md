@@ -42,7 +42,8 @@ func main() {
 
 
     // if you want to use VK-API,
-    // you must get ServiceKey for your application
+	// you must get ServiceKey for your application
+	
 	go caller.CallBot(bot, caller.GetVkPosts(groupID, ServiceKey))
 
 	for err := range caller.ErrChan {
