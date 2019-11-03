@@ -8,7 +8,7 @@ import (
 )
 
 type response struct {
-	body body `json:"response"`
+	Body body `json:"response"`
 }
 
 type body struct {
@@ -58,7 +58,7 @@ func getPosts(path string) (body, error) {
 		return body{}, err
 	}
 
-	return r.body, nil
+	return r.Body, nil
 }
 
 func makeMessage(d data, groupID string) string {

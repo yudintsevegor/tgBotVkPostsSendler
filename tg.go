@@ -3,7 +3,6 @@ package tgBotVkPostSendler
 import (
 	"fmt"
 	"log"
-	"net/http"
 
 	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
@@ -31,17 +30,14 @@ func (params *Params) CallBot(bot *tgbotapi.BotAPI, in <-chan string) error {
 
 	updates := bot.ListenForWebhook("/")
 
-	port := "8080"
-	go http.ListenAndServe(":"+port, nil)
-	fmt.Printf("start listen :%v", port)
-
 	for {
 		select {
 		case text := <-in:
 			if _, err := bot.Send(tgbotapi.NewMessageToChannel(channelName, text)); err != nil {
-				log.Println(err)
+				log.Printf("Channel Name: %v, Error: %v", channelName, err)
 			}
 		case update := <-updates:
+			log.Println(update.Message.Text)
 			_, err = bot.Send(tgbotapi.NewMessage(
 				update.Message.Chat.ID,
 				fmt.Sprintf("Bot is handler for %v channel", channelName),
