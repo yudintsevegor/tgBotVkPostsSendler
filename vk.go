@@ -110,9 +110,10 @@ func loop(count int, groupID string, u url.Values, out chan string) {
 		switch {
 		case corner == 0:
 			continue
-		case corner > count:
+		case corner > count && !isFirstReq:
 			u.Set("count", strconv.Itoa(count))
 			path = reqUrl + u.Encode()
+			log.Printf("new path: %v", path)
 			continue
 		}
 
