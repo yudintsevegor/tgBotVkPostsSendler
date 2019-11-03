@@ -1,11 +1,8 @@
 package tgBotVkPostSendler
 
 import (
-	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"net/url"
 	"time"
 )
@@ -92,32 +89,4 @@ func (options *ReqOptions) GetVkPosts(groupID, serviceKey string) <-chan string 
 	}()
 
 	return out
-}
-
-func getPosts(path string) (Body, error) {
-	response, err := http.Get(path)
-	if err != nil {
-		return Body{}, err
-	}
-	defer response.Body.Close()
-
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return Body{}, err
-	}
-
-	resp := new(Response)
-	if err := json.Unmarshal(body, resp); err != nil {
-		return Body{}, err
-	}
-
-	return resp.Body, nil
-}
-
-func makeMessage(v Data, groupID string) string {
-	return v.Text + "\n\n" + makeLink(string(v.ID), groupID)
-}
-
-func makeLink(id, groupID string) string {
-	return vkUrl + "wall" + groupID + "_" + id
 }
