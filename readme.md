@@ -1,0 +1,1 @@
+Easy util for getting posts from vk communities by them ID and send the posts to telegram channel by it ID.
