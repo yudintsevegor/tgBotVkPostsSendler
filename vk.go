@@ -42,7 +42,12 @@ var mapFilter = map[string]struct{}{
 	"all":         struct{}{},
 }
 
-func (caller *Caller) GetVkPosts(groupID, serviceKey string) <-chan string {
+type Message struct {
+	ID   string
+	Text string
+}
+
+func (caller *Caller) GetVkPosts(groupID, serviceKey string) <-chan Message {
 	count, _, err := caller.Options.validateOptions()
 	if err != nil {
 		caller.ErrChan <- err
@@ -59,7 +64,7 @@ func (caller *Caller) GetVkPosts(groupID, serviceKey string) <-chan string {
 	u.Set("v", version)
 	u.Set("extended", "1") // is it really important?
 
-	out := make(chan string)
+	out := make(chan Message)
 	go loop(count, groupID, u, out)
 
 	return out
@@ -83,10 +88,12 @@ func (opt *ReqOptions) validateOptions() (int, int, error) {
 	return count, offset, nil
 }
 
-func loop(count int, groupID string, u url.Values, out chan string) {
-	var isFirstReq = true
-	var corner int
-	var zeroLevel int // determines how many posts are necessary to send into telegram channel
+func loop(count int, groupID string, u url.Values, out chan Message) {
+	var (
+		isFirstReq = true
+		corner     int
+		zeroLevel  int // determines how many posts are necessary to send into telegram channel
+	)
 	path := reqUrl + u.Encode()
 
 	for {
@@ -127,7 +134,10 @@ func loop(count int, groupID string, u url.Values, out chan string) {
 
 		// send posts from the latest to the earliest
 		for i := corner - 1; i >= 0; i-- {
-			out <- makeMessage(body.Items[i], groupID)
+			out <- Message{
+				ID:   string(body.Items[i].ID),
+				Text: makeMessage(body.Items[i], groupID),
+			}
 		}
 	}
 }

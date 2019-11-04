@@ -17,7 +17,7 @@ type Caller struct {
 	ErrChan    chan error
 }
 
-func (caller *Caller) CallBot(bot *tgbotapi.BotAPI, in <-chan string) error {
+func (caller *Caller) CallBot(bot *tgbotapi.BotAPI, in <-chan Message) error {
 	channelName := caller.ChannelName
 	webHookURL := caller.WebHookURL
 
@@ -32,8 +32,8 @@ func (caller *Caller) CallBot(bot *tgbotapi.BotAPI, in <-chan string) error {
 
 	for {
 		select {
-		case text := <-in:
-			if _, err := bot.Send(tgbotapi.NewMessageToChannel(channelName, text)); err != nil {
+		case mes := <-in:
+			if _, err := bot.Send(tgbotapi.NewMessageToChannel(channelName, mes.Text)); err != nil {
 				log.Printf("Channel Name: %v, Error: %v", channelName, err)
 			}
 		case update := <-updates:

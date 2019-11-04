@@ -12,20 +12,20 @@ type response struct {
 }
 
 type body struct {
-	Count  int     `json:count`
-	Groups []group `json:"groups`
+	Count  int     `json:"count"`
+	Groups []group `json:"groups"`
 	Items  []data  `json:"items"`
 }
 
 type group struct {
 	ID         int    `json:"id"`
-	ScreenName string `json:screen_name`
+	ScreenName string `json:"screen_name"`
 }
 
 type data struct {
 	ID ID `json:"id"`
 
-	Text string `json::text`
+	Text string `json:"text"`
 }
 
 type ID string
