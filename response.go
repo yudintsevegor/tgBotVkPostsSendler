@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type response struct {
@@ -23,9 +24,9 @@ type group struct {
 }
 
 type data struct {
-	ID ID `json:"id"`
-
+	ID   ID     `json:"id"`
 	Text string `json:"text"`
+	Date Time   `json:"date"`
 }
 
 type ID string
@@ -37,6 +38,19 @@ func (id *ID) UnmarshalJSON(b []byte) error {
 	}
 
 	*id = ID(strconv.Itoa(i))
+
+	return nil
+}
+
+type Time time.Time
+
+func (t *Time) UnmarshalJSON(b []byte) error {
+	var i int64
+	if err := json.Unmarshal(b, &i); err != nil {
+		return err
+	}
+
+	*t = Time(time.Unix(i, 0))
 
 	return nil
 }

@@ -96,6 +96,8 @@ func loop(count int, groupID string, u url.Values, out chan Message) {
 	)
 	path := reqUrl + u.Encode()
 
+	now := time.Now()
+
 	for {
 		if !isFirstReq {
 			time.Sleep(20 * time.Second)
@@ -134,6 +136,10 @@ func loop(count int, groupID string, u url.Values, out chan Message) {
 
 		// send posts from the latest to the earliest
 		for i := corner - 1; i >= 0; i-- {
+			if now.After(time.Time(body.Items[i].Date)) {
+				continue
+			}
+
 			out <- Message{
 				ID:   string(body.Items[i].ID),
 				Text: makeMessage(body.Items[i], groupID),
