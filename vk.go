@@ -65,7 +65,7 @@ func (caller *Caller) GetVkPosts(groupID, serviceKey string) <-chan Message {
 	u.Set("extended", "1") // is it really important?
 
 	out := make(chan Message)
-	go loop(count, groupID, u, out)
+	go caller.Writer.loop(count, groupID, u, out)
 
 	return out
 }
@@ -88,7 +88,7 @@ func (opt *ReqOptions) validateOptions() (int, int, error) {
 	return count, offset, nil
 }
 
-func loop(count int, groupID string, u url.Values, out chan Message) {
+func (w *Writer) loop(count int, groupID string, u url.Values, out chan Message) {
 	var (
 		isFirstReq = true
 		corner     int
@@ -96,11 +96,9 @@ func loop(count int, groupID string, u url.Values, out chan Message) {
 	)
 	path := reqUrl + u.Encode()
 
-	now := time.Now()
-
 	for {
 		if !isFirstReq {
-			time.Sleep(20 * time.Second)
+			time.Sleep(1 * time.Hour)
 		}
 
 		body, err := getPosts(path)
@@ -134,17 +132,39 @@ func loop(count int, groupID string, u url.Values, out chan Message) {
 			corner = len(body.Items)
 		}
 
+		ids, err := w.SelectRows()
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		posts := getDifPosts(ids, body.Items)
 		// send posts from the latest to the earliest
 		for i := corner - 1; i >= 0; i-- {
-			if now.After(time.Time(body.Items[i].Date)) {
-				log.Println(now, body.Items[i].Date)
+			w.id = string(posts[i].ID)
+			w.text = makeMessage(posts[i], groupID)
+
+			if err := w.InsertToDb(); err != nil {
+				log.Println(err)
 				continue
 			}
 
 			out <- Message{
-				ID:   string(body.Items[i].ID),
-				Text: makeMessage(body.Items[i], groupID),
+				ID:   w.id,
+				Text: w.text,
 			}
 		}
 	}
+}
+
+func getDifPosts(ids map[string]struct{}, in []data) []data {
+	out := make([]data, 0, len(in))
+	for _, v := range in {
+		if _, ok := ids[string(v.ID)]; ok {
+			continue
+		}
+		out = append(out, v)
+	}
+
+	return out
 }
