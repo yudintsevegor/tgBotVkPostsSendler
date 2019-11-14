@@ -22,8 +22,8 @@ type Caller struct {
 	// which are not published yet
 	TimeOut time.Duration
 
-	// Writer is a field for taking requests to DB
-	Writer Writer
+	// Writer is a "client" for taking requests to DB
+	Writer *Writer
 }
 
 func (caller *Caller) CallBot(bot *tgbotapi.BotAPI, in <-chan Message) error {
@@ -42,7 +42,7 @@ func (caller *Caller) CallBot(bot *tgbotapi.BotAPI, in <-chan Message) error {
 	for {
 		select {
 		case mes := <-in:
-			if err := w.sendMessage(bot, channelName, mes.Text); err != nil {
+			if err := w.sendMessage(bot, channelName, mes.ID, mes.Text); err != nil {
 				log.Printf("Channel Name: %v, Error: %v", channelName, err)
 			}
 		case <-time.After(caller.TimeOut):
@@ -53,7 +53,7 @@ func (caller *Caller) CallBot(bot *tgbotapi.BotAPI, in <-chan Message) error {
 			}
 
 			for _, message := range messages {
-				if err := w.sendMessage(bot, channelName, message.Text); err != nil {
+				if err := w.sendMessage(bot, channelName, message.ID, message.Text); err != nil {
 					log.Printf("Channel Name: %v, Error: %v", channelName, err)
 				}
 			}
@@ -71,12 +71,12 @@ func (caller *Caller) CallBot(bot *tgbotapi.BotAPI, in <-chan Message) error {
 	}
 }
 
-func (w *Writer) sendMessage(bot *tgbotapi.BotAPI, channelName, text string) error {
+func (w *Writer) sendMessage(bot *tgbotapi.BotAPI, channelName, id, text string) error {
 	if _, err := bot.Send(tgbotapi.NewMessageToChannel(channelName, text)); err != nil {
 		return err
 	}
 
-	if err := w.UpdateStatus(); err != nil {
+	if err := w.UpdateStatus(id); err != nil {
 		return err
 	}
 

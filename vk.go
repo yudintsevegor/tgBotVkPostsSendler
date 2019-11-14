@@ -53,6 +53,8 @@ func (caller *Caller) GetVkPosts(groupID, serviceKey string) <-chan Message {
 		caller.ErrChan <- err
 	}
 
+	caller.Writer.setDbOffset(caller.TimeOut, count)
+
 	u := url.Values{}
 	u.Set("count", caller.Options.Count)
 	u.Set("offset", caller.Options.Offset)
@@ -65,10 +67,12 @@ func (caller *Caller) GetVkPosts(groupID, serviceKey string) <-chan Message {
 	u.Set("extended", "1") // is it really important?
 
 	out := make(chan Message)
-	go caller.Writer.loop(count, groupID, u, out)
+	go caller.Writer.loop(caller.TimeOut/day, count, groupID, u, out)
 
 	return out
 }
+
+const day = 24
 
 func (opt *ReqOptions) validateOptions() (int, int, error) {
 	count, err := strconv.Atoi(opt.Count)
@@ -88,17 +92,17 @@ func (opt *ReqOptions) validateOptions() (int, int, error) {
 	return count, offset, nil
 }
 
-func (w *Writer) loop(count int, groupID string, u url.Values, out chan Message) {
-	var (
-		isFirstReq = true
-		corner     int
-		zeroLevel  int // determines how many posts are necessary to send into telegram channel
-	)
+func (w *Writer) loop(sleep time.Duration, count int, groupID string, u url.Values, out chan Message) {
+	var isFirstReq = true
+
 	path := reqUrl + u.Encode()
 
 	for {
 		if !isFirstReq {
-			time.Sleep(1 * time.Hour)
+			time.Sleep(sleep)
+		}
+		if isFirstReq {
+			isFirstReq = false
 		}
 
 		body, err := getPosts(path)
@@ -113,25 +117,6 @@ func (w *Writer) loop(count int, groupID string, u url.Values, out chan Message)
 			continue
 		}
 
-		corner = body.Count - zeroLevel
-		switch {
-		case corner == 0:
-			continue
-		case corner > count && !isFirstReq:
-			u.Set("count", strconv.Itoa(count))
-			path = reqUrl + u.Encode()
-			log.Printf("new path: %v", path)
-			continue
-		}
-
-		if !isFirstReq {
-			zeroLevel += len(body.Items)
-		} else {
-			isFirstReq = false
-			zeroLevel = body.Count
-			corner = len(body.Items)
-		}
-
 		ids, err := w.SelectRows()
 		if err != nil {
 			log.Println(err)
@@ -140,7 +125,7 @@ func (w *Writer) loop(count int, groupID string, u url.Values, out chan Message)
 
 		posts := getDifPosts(ids, body.Items)
 		// send posts from the latest to the earliest
-		for i := corner - 1; i >= 0; i-- {
+		for i := len(posts) - 1; i >= 0; i-- {
 			w.id = string(posts[i].ID)
 			w.text = makeMessage(posts[i], groupID)
 
