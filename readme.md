@@ -14,40 +14,61 @@ import (
 )
 
 func main() {
+	db, err := sql.Open("postgres", DSN)
+	if err != nil {
+		// error handler
+	}
+	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		// error handler
+	}
+
+	w := sendler.Writer{
+		DB:        db,
+		TableName: "tableName",
+	}
+
+	if _, err = w.CreateTable(); err != nil {
+		// error handler
+	}
+
 	port := "8080"
 	go http.ListenAndServe(":"+port, nil)
 	fmt.Printf("start listen :%v\n", port)
 
 	bot, err := tgbotapi.NewBotAPI(BotToken)
 	if err != nil {
-		log.Fatal(err)
+		// error handler
 	}
 
 	groupID := "groupID"
 	channelName := "@channelName"
-	webHookURL := "WebHook"
+	webHookURL := "webHook"
 
 	opt := sendler.ReqOptions{
-		Count:  "5",
+		Count:  "10",
 		Offset: "0",
 		Filter: "owner",
 	}
 
-	caller := sendler.Caller{
+	handler := sendler.Handler{
 		ChannelName: channelName,
 		WebHookURL:  webHookURL,
 		Options:     opt,
 		ErrChan:     make(chan error),
+
+		TimeOut: time.Hour * 24,
+		Writer:  &w,
 	}
 
+	go handler.StartBot(bot, handler.GetVkPosts(groupID, ServiceKey))
 
-	// you must get ServiceKey using vk-api
-	go caller.CallBot(bot, caller.GetVkPosts(groupID, ServiceKey))
-
-	for err := range caller.ErrChan {
-		log.Fatal(err)
+	for err := range handler.ErrChan {
+		// error handler
 	}
 }
+
 ```
 
 ## Packages
