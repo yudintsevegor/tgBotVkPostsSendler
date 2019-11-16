@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log"
 	"net/url"
-	"strconv"
 	"time"
 )
 
@@ -48,9 +47,8 @@ type Message struct {
 }
 
 func (handler *Handler) GetVkPosts(groupID, serviceKey string) <-chan Message {
-	count, _, err := handler.Options.validateOptions()
-	if err != nil {
-		handler.ErrChan <- err
+	if _, ok := mapFilter[handler.Options.Filter]; !ok {
+		handler.ErrChan <- errors.New("unexpected vk-filter in the request")
 	}
 
 	u := url.Values{}
@@ -66,33 +64,14 @@ func (handler *Handler) GetVkPosts(groupID, serviceKey string) <-chan Message {
 
 	out := make(chan Message)
 	const day = 24 // TODO: FIX IT
-	go handler.Writer.loop(handler.TimeOut/day, count, groupID, u, out)
+	path := reqUrl + u.Encode()
+	go handler.Writer.loop(handler.TimeOut/day, groupID, path, out)
 
 	return out
 }
 
-func (opt *ReqOptions) validateOptions() (int, int, error) {
-	count, err := strconv.Atoi(opt.Count)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	offset, err := strconv.Atoi(opt.Offset)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	if _, ok := mapFilter[opt.Filter]; !ok {
-		return 0, 0, errors.New("unexpected filter in the request")
-	}
-
-	return count, offset, nil
-}
-
-func (w *Writer) loop(sleep time.Duration, count int, groupID string, u url.Values, out chan Message) {
+func (w *Writer) loop(sleep time.Duration, groupID, path string, out chan Message) {
 	var isFirstReq = true
-
-	path := reqUrl + u.Encode()
 
 	for {
 		if !isFirstReq {
@@ -121,6 +100,7 @@ func (w *Writer) loop(sleep time.Duration, count int, groupID string, u url.Valu
 		}
 
 		posts := getDifPosts(ids, body.Items)
+
 		// send posts from the latest to the earliest
 		for i := len(posts) - 1; i >= 0; i-- {
 			w.id = string(posts[i].ID)

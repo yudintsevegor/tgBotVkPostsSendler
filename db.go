@@ -34,7 +34,7 @@ type Writer struct {
 
 	// id is a ID of post, which VK API sends in response
 	id string
-	// text is a message, which is posting in telegram channel
+	// text is a message, which sends in telegram channel
 	text string
 	// isPosted determines is message posted in telegram channel
 	isPosted bool
