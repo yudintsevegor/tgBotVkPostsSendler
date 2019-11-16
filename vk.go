@@ -53,8 +53,6 @@ func (caller *Caller) GetVkPosts(groupID, serviceKey string) <-chan Message {
 		caller.ErrChan <- err
 	}
 
-	caller.Writer.setDbOffset(caller.TimeOut, count)
-
 	u := url.Values{}
 	u.Set("count", caller.Options.Count)
 	u.Set("offset", caller.Options.Offset)
@@ -67,12 +65,11 @@ func (caller *Caller) GetVkPosts(groupID, serviceKey string) <-chan Message {
 	u.Set("extended", "1") // is it really important?
 
 	out := make(chan Message)
+	const day = 24
 	go caller.Writer.loop(caller.TimeOut/day, count, groupID, u, out)
 
 	return out
 }
-
-const day = 24
 
 func (opt *ReqOptions) validateOptions() (int, int, error) {
 	count, err := strconv.Atoi(opt.Count)

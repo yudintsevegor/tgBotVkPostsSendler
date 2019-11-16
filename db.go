@@ -3,13 +3,12 @@ package tgBotVkPostSendler
 import (
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/pkg/errors"
 )
 
 const (
-	CreateTable = `
+	createTable = `
 	CREATE TABLE %s (
 		ID SERIAL PRIMARY KEY,
 		Text TEXT,
@@ -17,46 +16,57 @@ const (
 	);
 	`
 
-	DeleteTable = `DROP TABLE %s`
+	deleteTable = `DROP TABLE %s`
+
+	isTableExists = `
+	SELECT EXISTS (
+		SELECT 1
+		FROM   information_schema.tables 
+		WHERE  table_schema = 'public'
+		AND    table_name = '%s'
+		);`
 )
 
-var mapReq = map[string]struct{}{
-	DeleteTable: struct{}{},
-	CreateTable: struct{}{},
-}
-
 type Writer struct {
-	DB        *sql.DB
-	TableName string
+	DB             *sql.DB
+	TableName      string
+	CreateNewTable bool
 
-	offset   string
-	id       string
-	text     string
+	// id is a ID of post, which VK API sends in response
+	id string
+	// text is a message, which is posting in telegram channel
+	text string
+	// isPosted determines is message posted in telegram channel
 	isPosted bool
 }
 
-func (w *Writer) setDbOffset(duration time.Duration, count int) {
-	w.offset = "20"
-}
-
-func (w *Writer) EditTable(mode string) (sql.Result, error) {
-	if !validateReq(mode) {
-		return nil, errors.New("[ERR] validation err")
+func (w *Writer) CreateTable() (sql.Result, error) {
+	isExistsQuery := fmt.Sprintf(isTableExists, w.TableName)
+	var isExists bool
+	row := w.DB.QueryRow(isExistsQuery)
+	if err := row.Scan(&isExists); err != nil {
+		return nil, err
 	}
 
-	query := fmt.Sprintf(mode, w.TableName)
+	if isExists && !w.CreateNewTable {
+		return nil, nil
+	}
+
+	if isExists {
+		query := fmt.Sprintf(deleteTable, w.TableName)
+		_, err := w.DB.Exec(query)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Query: %v", query)
+		}
+	}
+
+	query := fmt.Sprintf(createTable, w.TableName)
 	res, err := w.DB.Exec(query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Query: %v", query)
 	}
-	return res, err
-}
 
-func validateReq(mode string) bool {
-	if _, ok := mapReq[mode]; !ok {
-		return false
-	}
-	return true
+	return res, err
 }
 
 func (w *Writer) InsertToDb() error {
@@ -114,7 +124,7 @@ func (w *Writer) SelectRows() (map[string]struct{}, error) {
 }
 
 func (w *Writer) SelectOldRows() ([]Message, error) {
-	query := fmt.Sprintf("SELECT ID, Text FROM %s WHERE IsPosted = false OFFSET %s;", w.TableName, w.offset)
+	query := fmt.Sprintf("SELECT ID, Text FROM %s WHERE IsPosted = false;", w.TableName)
 
 	rows, err := w.DB.Query(query)
 	if err != nil {

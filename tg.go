@@ -12,13 +12,13 @@ type Caller struct {
 	// Channelname is an unique identifier for the target chat or username
 	// of the target channel (in the format @channelusername)
 	ChannelName string
-	// WebHookURL is a special URL which determines an address where telegram-bot is available.
+	// WebHookURL is a special URL which determines an address where telegram-bot is available
 	WebHookURL string
 	// Options is a struct with request options to VK-API
 	Options ReqOptions
 	// ErrChan is a golang channel for sending error
 	ErrChan chan error
-	// TimeOut is a field which determins how often we ask database for get old posts,
+	// TimeOut is a field which determins how often program asks database for get old posts,
 	// which are not published yet
 	TimeOut time.Duration
 
@@ -30,7 +30,6 @@ func (caller *Caller) CallBot(bot *tgbotapi.BotAPI, in <-chan Message) error {
 	channelName := caller.ChannelName
 	webHookURL := caller.WebHookURL
 
-	// bot.Debug = true
 	fmt.Printf("Authorized on account %s\n", bot.Self.UserName)
 
 	if _, err := bot.SetWebhook(tgbotapi.NewWebhook(webHookURL)); err != nil {
@@ -39,6 +38,7 @@ func (caller *Caller) CallBot(bot *tgbotapi.BotAPI, in <-chan Message) error {
 
 	updates := bot.ListenForWebhook("/")
 	w := caller.Writer
+
 	for {
 		select {
 		case mes := <-in:
