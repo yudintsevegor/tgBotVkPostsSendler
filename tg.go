@@ -8,7 +8,7 @@ import (
 	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
 
-type Caller struct {
+type Handler struct {
 	// Channelname is an unique identifier for the target chat or username
 	// of the target channel (in the format @channelusername)
 	ChannelName string
@@ -26,18 +26,18 @@ type Caller struct {
 	Writer *Writer
 }
 
-func (caller *Caller) CallBot(bot *tgbotapi.BotAPI, in <-chan Message) error {
-	channelName := caller.ChannelName
-	webHookURL := caller.WebHookURL
+func (handler *Handler) StartBot(bot *tgbotapi.BotAPI, in <-chan Message) error {
+	channelName := handler.ChannelName
+	webHookURL := handler.WebHookURL
 
 	fmt.Printf("Authorized on account %s\n", bot.Self.UserName)
 
 	if _, err := bot.SetWebhook(tgbotapi.NewWebhook(webHookURL)); err != nil {
-		caller.ErrChan <- err
+		handler.ErrChan <- err
 	}
 
 	updates := bot.ListenForWebhook("/")
-	w := caller.Writer
+	w := handler.Writer
 
 	for {
 		select {
@@ -45,7 +45,7 @@ func (caller *Caller) CallBot(bot *tgbotapi.BotAPI, in <-chan Message) error {
 			if err := w.sendMessage(bot, channelName, mes.ID, mes.Text); err != nil {
 				log.Printf("Channel Name: %v, Error: %v", channelName, err)
 			}
-		case <-time.After(caller.TimeOut):
+		case <-time.After(handler.TimeOut):
 			messages, err := w.SelectOldRows()
 			if err != nil {
 				log.Println(err)

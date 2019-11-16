@@ -47,16 +47,16 @@ type Message struct {
 	Text string
 }
 
-func (caller *Caller) GetVkPosts(groupID, serviceKey string) <-chan Message {
-	count, _, err := caller.Options.validateOptions()
+func (handler *Handler) GetVkPosts(groupID, serviceKey string) <-chan Message {
+	count, _, err := handler.Options.validateOptions()
 	if err != nil {
-		caller.ErrChan <- err
+		handler.ErrChan <- err
 	}
 
 	u := url.Values{}
-	u.Set("count", caller.Options.Count)
-	u.Set("offset", caller.Options.Offset)
-	u.Set("filter", caller.Options.Filter)
+	u.Set("count", handler.Options.Count)
+	u.Set("offset", handler.Options.Offset)
+	u.Set("filter", handler.Options.Filter)
 
 	u.Set("owner_id", groupID)
 	u.Set("access_token", serviceKey)
@@ -65,8 +65,8 @@ func (caller *Caller) GetVkPosts(groupID, serviceKey string) <-chan Message {
 	u.Set("extended", "1") // is it really important?
 
 	out := make(chan Message)
-	const day = 24
-	go caller.Writer.loop(caller.TimeOut/day, count, groupID, u, out)
+	const day = 24 // TODO: FIX IT
+	go handler.Writer.loop(handler.TimeOut/day, count, groupID, u, out)
 
 	return out
 }
