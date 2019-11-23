@@ -44,11 +44,6 @@ func main() {
 	go http.ListenAndServe(":"+port, nil)
 	fmt.Printf("start listen :%v\n", port)
 
-	bot, err := tgbotapi.NewBotAPI(BotToken)
-	if err != nil {
-		// error handler
-	}
-
 	groupID := "groupID"
 	channelName := "@channelName"
 	webHookURL := "webHook"
