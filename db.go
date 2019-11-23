@@ -27,7 +27,7 @@ const (
 		);`
 )
 
-type Writer struct {
+type DbWriter struct {
 	DB             *sql.DB
 	TableName      string
 	CreateNewTable bool
@@ -40,7 +40,7 @@ type Writer struct {
 	isPosted bool
 }
 
-func (w *Writer) CreateTable() (sql.Result, error) {
+func (w *DbWriter) CreateTable() (sql.Result, error) {
 	isExistsQuery := fmt.Sprintf(isTableExists, w.TableName)
 	var isExists bool
 	row := w.DB.QueryRow(isExistsQuery)
@@ -69,7 +69,7 @@ func (w *Writer) CreateTable() (sql.Result, error) {
 	return res, err
 }
 
-func (w *Writer) InsertToDb() error {
+func (w *DbWriter) InsertToDb() error {
 	query := fmt.Sprintf("INSERT INTO %s (ID, Text, IsPosted) VALUES ($1, $2, $3);", w.TableName)
 
 	stmnt, err := w.DB.Prepare(query)
@@ -85,7 +85,7 @@ func (w *Writer) InsertToDb() error {
 	return nil
 }
 
-func (w *Writer) UpdateStatus(id string) error {
+func (w *DbWriter) UpdateStatus(id string) error {
 	query := fmt.Sprintf("UPDATE %s SET IsPosted = true WHERE ID = $1;", w.TableName)
 
 	stmnt, err := w.DB.Prepare(query)
@@ -101,7 +101,7 @@ func (w *Writer) UpdateStatus(id string) error {
 	return nil
 }
 
-func (w *Writer) SelectRows() (map[string]struct{}, error) {
+func (w *DbWriter) SelectRows() (map[string]struct{}, error) {
 	query := fmt.Sprintf("SELECT ID FROM %s WHERE IsPosted = true;", w.TableName)
 
 	rows, err := w.DB.Query(query)
@@ -123,7 +123,7 @@ func (w *Writer) SelectRows() (map[string]struct{}, error) {
 	return ids, nil
 }
 
-func (w *Writer) SelectOldRows() ([]Message, error) {
+func (w *DbWriter) SelectOldRows() ([]Message, error) {
 	query := fmt.Sprintf("SELECT ID, Text FROM %s WHERE IsPosted = false;", w.TableName)
 
 	rows, err := w.DB.Query(query)
