@@ -40,6 +40,8 @@ type DbWriter struct {
 	isPosted bool
 }
 
+const errFormat = "Query: %v"
+
 func (w *DbWriter) CreateTable() (sql.Result, error) {
 	isExistsQuery := fmt.Sprintf(isTableExists, w.TableName)
 	var isExists bool
@@ -54,16 +56,15 @@ func (w *DbWriter) CreateTable() (sql.Result, error) {
 
 	if isExists {
 		query := fmt.Sprintf(deleteTable, w.TableName)
-		_, err := w.DB.Exec(query)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Query: %v", query)
+		if _, err := w.DB.Exec(query); err != nil {
+			return nil, errors.Wrapf(err, errFormat, query)
 		}
 	}
 
 	query := fmt.Sprintf(createTable, w.TableName)
 	res, err := w.DB.Exec(query)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Query: %v", query)
+		return nil, errors.Wrapf(err, errFormat, query)
 	}
 
 	return res, err
@@ -74,12 +75,11 @@ func (w *DbWriter) InsertToDb() error {
 
 	stmnt, err := w.DB.Prepare(query)
 	if err != nil {
-		return errors.Wrapf(err, "Query: %v", query)
+		return errors.Wrapf(err, errFormat, query)
 	}
 
-	_, err = stmnt.Exec(w.id, w.text, w.isPosted)
-	if err != nil {
-		return errors.Wrapf(err, "Query: %v", query)
+	if _, err = stmnt.Exec(w.id, w.text, w.isPosted); err != nil {
+		return errors.Wrapf(err, errFormat, query)
 	}
 
 	return nil
@@ -93,20 +93,19 @@ func (w *DbWriter) UpdateStatus(id string) error {
 		return err
 	}
 
-	_, err = stmnt.Exec(id)
-	if err != nil {
-		return errors.Wrapf(err, "Query: %v", query)
+	if _, err = stmnt.Exec(id); err != nil {
+		return errors.Wrapf(err, errFormat, query)
 	}
 
 	return nil
 }
 
-func (w *DbWriter) SelectRows() (map[string]struct{}, error) {
+func (w *DbWriter) SelectCompletedRows() (map[string]struct{}, error) {
 	query := fmt.Sprintf("SELECT ID FROM %s WHERE IsPosted = true;", w.TableName)
 
 	rows, err := w.DB.Query(query)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Query: %v", query)
+		return nil, errors.Wrapf(err, errFormat, query)
 	}
 	defer rows.Close()
 
@@ -123,12 +122,12 @@ func (w *DbWriter) SelectRows() (map[string]struct{}, error) {
 	return ids, nil
 }
 
-func (w *DbWriter) SelectOldRows() ([]Message, error) {
+func (w *DbWriter) SelectFailedRows() ([]Message, error) {
 	query := fmt.Sprintf("SELECT ID, Text FROM %s WHERE IsPosted = false;", w.TableName)
 
 	rows, err := w.DB.Query(query)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Query: %v", query)
+		return nil, errors.Wrapf(err, errFormat, query)
 	}
 	defer rows.Close()
 

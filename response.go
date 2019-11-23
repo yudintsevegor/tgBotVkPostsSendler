@@ -3,7 +3,6 @@ package tgBotVkPostSendler
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -57,7 +56,6 @@ func (t *Time) UnmarshalJSON(b []byte) error {
 }
 
 func getPosts(path string) (body, error) {
-	log.Println("TOOK REQUEST")
 	resp, err := http.Get(path)
 	if err != nil {
 		return body{}, err

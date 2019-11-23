@@ -4,6 +4,13 @@ Easy util for getting posts from vk communities by them ID and send the posts to
 ## Install
 `go get github.com/yudintsevegor/tgBotVkPostsSendler`
 
+## Packages
+* [go-telegram-bot-api](gopkg.in/telegram-bot-api.v4)
+* [vk-api](https://vk.com/dev/)
+
+## Restrictions
+* Only PostgresSQL is supporting now
+
 ## Example of Usage
 ``` go
 package main
@@ -46,6 +53,12 @@ func main() {
 	channelName := "@channelName"
 	webHookURL := "webHook"
 
+	telegram := sendler.Telegram{
+		ChannelName: channelName,
+		WebHookURL:  webHookURL,
+		BotToken:    BotToken,
+	}
+
 	opt := sendler.ReqOptions{
 		Count:  "10",
 		Offset: "0",
@@ -53,16 +66,18 @@ func main() {
 	}
 
 	handler := sendler.Handler{
-		ChannelName: channelName,
-		WebHookURL:  webHookURL,
-		Options:     opt,
-		ErrChan:     make(chan error),
+		Telegram: telegram,
+		Options:  opt,
+		ErrChan:  make(chan error),
 
-		TimeOut: time.Hour * 24,
-		Writer:  &w,
+		TimeOut:  time.Hour * 24,
+		DbWriter: &w,
 	}
 
-	go handler.StartBot(bot, handler.GetVkPosts(groupID, ServiceKey))
+	rrecipients := []string{"telegramUserName"}
+	handler.GetRecipients(recipients)
+
+	go handler.StartBot(handler.GetVkPosts(groupID, VkServicekey))
 
 	for err := range handler.ErrChan {
 		// error handler
@@ -70,8 +85,3 @@ func main() {
 }
 
 ```
-
-## Packages
-* [go-telegram-bot-api](gopkg.in/telegram-bot-api.v4)
-* [vk-api](https://vk.com/dev/)
-* standarts golang libs
