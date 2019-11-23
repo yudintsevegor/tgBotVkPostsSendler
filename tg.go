@@ -14,9 +14,10 @@ func (h *Handler) GetRecipients(input []string) {
 	}
 }
 
-func (h *Handler) StartBot(in <-chan Message) error {
+func (h *Handler) StartBot(in <-chan Message) {
 	if err := h.Telegram.createBot(); err != nil {
-		return err
+		h.ErrChan <- err
+		return
 	}
 	bot := h.Telegram.bot
 

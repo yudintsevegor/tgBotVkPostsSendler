@@ -72,7 +72,7 @@ func main() {
 	rrecipients := []string{"telegramUserName"}
 	handler.GetRecipients(recipients)
 
-	go handler.StartBot(handler.GetVkPosts(groupID, VkServicekey))
+	go handler.StartBot(handler.GetVkPosts(groupID, VkServiceKey))
 
 	for err := range handler.ErrChan {
 		// error handler
