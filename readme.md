@@ -30,6 +30,7 @@ BotToken is one of the ssential requirements for using package.
 
 ##### 2. Creation vk application and getting VkServiceKey
 Secondly, you need to get VkServiceKey using [vk-dev]https://vk.com/editapp?act=create). In `Settings` after creation you can find `Service token`. Get it and it is a VkServiceKey.
+
 ##### 3. Find vk-community and getting its ID.
 Thirdly, you need to visit a vk-community, find a random post and follow the link with time, how long time ago post was created. In URL you can see 
 ```
